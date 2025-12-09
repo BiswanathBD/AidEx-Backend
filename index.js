@@ -136,6 +136,13 @@ async function run() {
       res.send(result.value);
     });
 
+    // get donation request by ID
+    app.get("/donation-request/:id", verifyFireBaseToken, async (req, res) => {
+      const { id } = req.params;
+      const result = await donationRequests.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
     // mongodb end
   } catch (err) {
     console.error(err);

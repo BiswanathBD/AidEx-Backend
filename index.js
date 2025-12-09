@@ -32,6 +32,7 @@ async function run() {
 
     const AidExDB = client.db("AidExDB");
     const usersCollection = AidExDB.collection("usersCollection");
+    const donationRequests = AidExDB.collection("donationRequests");
 
     // create user
     app.post("/user", async (req, res) => {
@@ -48,6 +49,15 @@ async function run() {
       const result = await usersCollection.findOne({ email });
       res.send(result);
     });
+
+    // create blood donation request
+    app.post("/donation-request", async (req, res) => {
+      const request = req.body;
+      const result = await donationRequests.insertOne(request);
+      res.send(result);
+    });
+
+    // mongodb end
   } catch (err) {
     console.error(err);
   }

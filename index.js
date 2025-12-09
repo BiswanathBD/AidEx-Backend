@@ -121,6 +121,21 @@ async function run() {
       }
     );
 
+    // update user profile
+    app.put("/user/:email", verifyFireBaseToken, async (req, res) => {
+      const { email } = req.params;
+      const updatedData = req.body;
+
+      if (email !== req.token_email)
+        return res.status(403).send({ message: "Forbidden Access" });
+
+      const result = await usersCollection.findOneAndUpdate(
+        { email },
+        { $set: updatedData }
+      );
+      res.send(result.value);
+    });
+
     // mongodb end
   } catch (err) {
     console.error(err);

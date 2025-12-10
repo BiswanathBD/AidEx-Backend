@@ -70,7 +70,7 @@ async function run() {
     app.post("/user", async (req, res) => {
       const user = req.body;
       const result = await usersCollection.insertOne(user);
-      res.send(user);
+      res.send(result);
     });
 
     // get user data
@@ -143,7 +143,19 @@ async function run() {
       res.send(result);
     });
 
-    // mongodb end
+    // get all user by admin
+    app.get("/allUsers", verifyFireBaseToken, async (req, res) => {
+      const email = req.token_email;
+      const requester = await usersCollection.findOne({ email });
+
+      if (requester.role === "Admin") {
+        const result = await usersCollection.find().toArray();
+        return res.send(result);
+      }
+      res.status(401).send({ message: "Unauthorize Access" });
+    });
+
+    // ------------------------------//
   } catch (err) {
     console.error(err);
   }

@@ -149,9 +149,40 @@ async function run() {
       const requester = await usersCollection.findOne({ email });
 
       if (requester.role === "Admin") {
-        const result = await usersCollection.find().toArray();
+        const result = await usersCollection
+          .find({ role: { $ne: "Admin" } })
+          .toArray();
         return res.send(result);
       }
+      res.status(401).send({ message: "Unauthorize Access" });
+    });
+
+    // get total donor count and total request count by admin/volunteer
+    app.get("/statics", verifyFireBaseToken, async (req, res) => {
+      const email = req.token_email;
+      const requester = await usersCollection.findOne({ email });
+      if (requester.role === "Admin" || requester.role === "Volunteer") {
+        const totalUsers = await usersCollection.countDocuments({
+          role: "Donor",
+        });
+
+        // const fundDocs = await usersCollection
+        //   .find({ donatedAmount: { $exists: true } })
+        //   .toArray();
+        // const totalFunds = fundDocs.reduce(
+        //   (sum, item) => sum + (item.donatedAmount || 0),
+        //   0
+        // );
+
+        const totalRequests = await donationRequests.countDocuments();
+
+        return res.send({
+          totalUsers,
+          // totalFunds,
+          totalRequests,
+        });
+      }
+
       res.status(401).send({ message: "Unauthorize Access" });
     });
 

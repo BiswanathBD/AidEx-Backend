@@ -149,9 +149,7 @@ async function run() {
       const requester = await usersCollection.findOne({ email });
 
       if (requester.role === "Admin") {
-        const result = await usersCollection
-          .find({ role: { $ne: "Admin" } })
-          .toArray();
+        const result = await usersCollection.find().toArray();
         return res.send(result);
       }
       res.status(401).send({ message: "Unauthorize Access" });
@@ -184,6 +182,27 @@ async function run() {
       }
 
       res.status(401).send({ message: "Unauthorize Access" });
+    });
+
+    // update user status or role by checking admin role
+    app.put("/update-user/:id", verifyFireBaseToken, async (req, res) => {
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      const requester = await usersCollection.findOne({
+        email: req.token_email,
+      });
+
+      if (!requester || requester.role !== "Admin") {
+        return res.status(403).send({ message: "Forbidden Access" });
+      }
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateData }
+      );
+
+      res.send(result);
     });
 
     // ------------------------------//

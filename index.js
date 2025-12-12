@@ -86,8 +86,43 @@ async function run() {
       if (request.requesterEmail !== req.token_email) {
         return res.status(403).send({ message: "Forbidden Access" });
       }
+
+      const requester = await usersCollection.findOne({
+        email: req.token_email,
+      });
+
+      if (requester.status !== "Active") {
+        return res
+          .status(403)
+          .send({ message: "You are blocked and can't make a request." });
+      }
       const result = await donationRequests.insertOne(request);
       res.send(result);
+    });
+
+    // accept donation request
+    app.put("/donation-request/:id", verifyFireBaseToken, async (req, res) => {
+      const { id } = req.params;
+      const user = await usersCollection.findOne({ email: req.token_email });
+      if (!user || user.role !== "Donor") return;
+
+      const request = await donationRequests.findOne({ _id: new ObjectId(id) });
+      if (!request || request.status !== "Pending") return;
+
+      const { _id, ...rest } = request;
+      const updateDoc = {
+        ...rest,
+        status: "inprogress",
+        donorName: user.name,
+        donorEmail: user.email,
+      };
+
+      await donationRequests.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateDoc }
+      );
+
+      res.send(updateDoc);
     });
 
     // get my donation request
@@ -188,7 +223,7 @@ async function run() {
     app.put("/update-user/:id", verifyFireBaseToken, async (req, res) => {
       const { id } = req.params;
       const updateData = req.body;
-      
+
       const requester = await usersCollection.findOne({
         email: req.token_email,
       });

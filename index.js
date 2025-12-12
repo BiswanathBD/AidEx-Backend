@@ -139,6 +139,63 @@ async function run() {
       res.send(result);
     });
 
+    // edit donation request
+    app.put(
+      "/edit-donation-request/:id",
+      verifyFireBaseToken,
+      async (req, res) => {
+        const { id } = req.params;
+        const data = req.body;
+
+        const {
+          recipientName,
+          district,
+          upazila,
+          hospital,
+          address,
+          bloodGroup,
+          donationDate,
+          donationTime,
+          message,
+        } = data;
+
+        const request = await donationRequests.findOne({
+          _id: new ObjectId(id),
+        });
+
+        if (
+          !request ||
+          request.status !== "Pending" ||
+          request.requesterEmail !== req.token_email
+        ) {
+          return res.status(403).end();
+        }
+
+        const updatedData = {
+          ...request,
+          recipientName,
+          district,
+          upazila,
+          hospital,
+          address,
+          bloodGroup,
+          donationDate,
+          donationTime,
+          message,
+        };
+
+        await donationRequests.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+
+        const updatedRequest = await donationRequests.findOne({
+          _id: new ObjectId(id),
+        });
+        res.send(updatedRequest);
+      }
+    );
+
     // delete donation request
     app.delete(
       "/donation-request/:id",
@@ -247,6 +304,6 @@ async function run() {
 }
 run().catch(console.dir);
 
-// app.listen(port, () => {
-//   console.log(`AidEx server listening on port ${port}`);
-// });
+app.listen(port, () => {
+  console.log(`AidEx server listening on port ${port}`);
+});

@@ -7,6 +7,7 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -15,7 +16,6 @@
     "express": "^5.2.1",
     "firebase-admin": "^13.6.0",
     "mongodb": "^7.0.0",
-    "nodemon": "^3.1.11",
-    "vercel": "^50.0.0"
+    "nodemon": "^3.1.11"
   }
 }

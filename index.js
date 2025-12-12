@@ -65,6 +65,7 @@ async function run() {
     const AidExDB = client.db("AidExDB");
     const usersCollection = AidExDB.collection("usersCollection");
     const donationRequests = AidExDB.collection("donationRequests");
+    const fundsCollection = AidExDB.collection("fundsCollection");
 
     // create user
     app.post("/user", async (req, res) => {
@@ -100,31 +101,6 @@ async function run() {
       res.send(result);
     });
 
-    // accept donation request
-    app.put("/donation-request/:id", verifyFireBaseToken, async (req, res) => {
-      const { id } = req.params;
-      const user = await usersCollection.findOne({ email: req.token_email });
-      if (!user || user.role !== "Donor") return;
-
-      const request = await donationRequests.findOne({ _id: new ObjectId(id) });
-      if (!request || request.status !== "Pending") return;
-
-      const { _id, ...rest } = request;
-      const updateDoc = {
-        ...rest,
-        status: "inprogress",
-        donorName: user.name,
-        donorEmail: user.email,
-      };
-
-      await donationRequests.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: updateDoc }
-      );
-
-      res.send(updateDoc);
-    });
-
     // get my donation request
     app.get("/donation-request", verifyFireBaseToken, async (req, res) => {
       const { email } = req.query;
@@ -147,52 +123,96 @@ async function run() {
         const { id } = req.params;
         const data = req.body;
 
-        const {
-          recipientName,
-          district,
-          upazila,
-          hospital,
-          address,
-          bloodGroup,
-          donationDate,
-          donationTime,
-          message,
-        } = data;
-
         const request = await donationRequests.findOne({
           _id: new ObjectId(id),
         });
+        const user = await usersCollection.findOne({ email: req.token_email });
 
         if (
           !request ||
           request.status !== "Pending" ||
-          request.requesterEmail !== req.token_email
+          (request.requesterEmail !== req.token_email &&
+            !["Admin"].includes(user.role))
         ) {
           return res.status(403).end();
         }
 
         const updatedData = {
           ...request,
-          recipientName,
-          district,
-          upazila,
-          hospital,
-          address,
-          bloodGroup,
-          donationDate,
-          donationTime,
-          message,
+          recipientName: data.recipientName,
+          district: data.district,
+          upazila: data.upazila,
+          hospital: data.hospital,
+          address: data.address,
+          bloodGroup: data.bloodGroup,
+          donationDate: data.donationDate,
+          donationTime: data.donationTime,
+          message: data.message,
         };
 
-        await donationRequests.updateOne(
+        const result = await donationRequests.updateOne(
           { _id: new ObjectId(id) },
           { $set: updatedData }
         );
+        res.send(result);
+      }
+    );
 
-        const updatedRequest = await donationRequests.findOne({
+    // accept donation request
+    app.put("/donation-request/:id", verifyFireBaseToken, async (req, res) => {
+      const { id } = req.params;
+      const user = await usersCollection.findOne({ email: req.token_email });
+      if (!user || user.role !== "Donor") return;
+
+      const request = await donationRequests.findOne({ _id: new ObjectId(id) });
+      if (!request || request.status !== "Pending") return;
+
+      const { _id, ...rest } = request;
+      const updateDoc = {
+        ...rest,
+        status: "Inprogress",
+        donorName: user.name,
+        donorEmail: user.email,
+      };
+
+      await donationRequests.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updateDoc }
+      );
+
+      res.send(updateDoc);
+    });
+
+    // update request status
+    app.put(
+      "/update-request-status/:id",
+      verifyFireBaseToken,
+      async (req, res) => {
+        const { id } = req.params;
+        const { status } = req.body;
+
+        const request = await donationRequests.findOne({
           _id: new ObjectId(id),
         });
-        res.send(updatedRequest);
+        const user = await usersCollection.findOne({ email: req.token_email });
+
+        if (!request) return res.status(404).end();
+
+        if (
+          (user.role === "Donor" &&
+            request.requesterEmail === req.token_email &&
+            request.status === "Inprogress") ||
+          user.role === "Admin" ||
+          user.role === "Volunteer"
+        ) {
+          await donationRequests.updateOne(
+            { _id: new ObjectId(id) },
+            { $set: { status } }
+          );
+          return res.send({ message: "Status updated" });
+        }
+
+        res.status(403).end();
       }
     );
 
@@ -203,13 +223,23 @@ async function run() {
       async (req, res) => {
         const { id } = req.params;
 
-        const query = { _id: new ObjectId(id) };
-        const findData = await donationRequests.findOne(query);
+        const request = await donationRequests.findOne({
+          _id: new ObjectId(id),
+        });
+        const user = await usersCollection.findOne({ email: req.token_email });
 
-        if (findData.requesterEmail === req.token_email) {
-          const result = donationRequests.deleteOne(query);
-          res.send(result);
+        if (
+          !request ||
+          (request.requesterEmail !== req.token_email &&
+            !["Admin"].includes(user.role))
+        ) {
+          return res.status(403).end();
         }
+
+        const result = await donationRequests.deleteOne({
+          _id: new ObjectId(id),
+        });
+        res.send(result);
       }
     );
 
@@ -247,29 +277,40 @@ async function run() {
       res.status(401).send({ message: "Unauthorize Access" });
     });
 
+    // get all request by checking admin
+    app.get("/allRequest", verifyFireBaseToken, async (req, res) => {
+      const email = req.token_email;
+      const requester = await usersCollection.findOne({ email });
+
+      if (requester.role === "Admin" || requester.role === "Volunteer") {
+        const result = await donationRequests.find().toArray();
+        return res.send(result);
+      }
+      res.status(401).send({ message: "Unauthorize Access" });
+    });
+
     // get total donor count and total request count by admin/volunteer
     app.get("/statics", verifyFireBaseToken, async (req, res) => {
       const email = req.token_email;
       const requester = await usersCollection.findOne({ email });
+
       if (requester.role === "Admin" || requester.role === "Volunteer") {
         const totalUsers = await usersCollection.countDocuments({
           role: "Donor",
         });
 
-        // const fundDocs = await usersCollection
-        //   .find({ donatedAmount: { $exists: true } })
-        //   .toArray();
-        // const totalFunds = fundDocs.reduce(
-        //   (sum, item) => sum + (item.donatedAmount || 0),
-        //   0
-        // );
-
         const totalRequests = await donationRequests.countDocuments();
+
+        const fundDocs = await fundsCollection.find().toArray();
+        const totalFunds = fundDocs.reduce(
+          (sum, item) => sum + (item.fundAmount || 0),
+          0
+        );
 
         return res.send({
           totalUsers,
-          // totalFunds,
           totalRequests,
+          totalFunds,
         });
       }
 

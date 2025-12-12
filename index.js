@@ -247,6 +247,6 @@ async function run() {
 }
 run().catch(console.dir);
 
-app.listen(port, () => {
-  console.log(`AidEx server listening on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`AidEx server listening on port ${port}`);
+// });

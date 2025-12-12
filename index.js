@@ -59,8 +59,8 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("✅ Successfully connected to MongoDB!");
+    // await client.connect();
+    // console.log("✅ Successfully connected to MongoDB!");
 
     const AidExDB = client.db("AidExDB");
     const usersCollection = AidExDB.collection("usersCollection");

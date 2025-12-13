@@ -111,6 +111,25 @@ async function run() {
       res.send(result);
     });
 
+    // search donor
+    app.get("/search-donor", async (req, res) => {
+      const { bloodGroup, district, upazila } = req.query;
+
+      if (!bloodGroup || !district || !upazila) {
+        return res.status(400).end();
+      }
+
+      const query = {
+        role: "Donor",
+        bloodGroup,
+        district,
+        upazila,
+      };
+
+      const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
     // get my donation request
     app.get("/donation-request", verifyFireBaseToken, async (req, res) => {
       const { email } = req.query;

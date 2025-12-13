@@ -101,6 +101,16 @@ async function run() {
       res.send(result);
     });
 
+    // get all pending donation request
+    app.get("/pendingRequests", async (req, res) => {
+      const result = await donationRequests
+        .find({ status: "Pending" })
+        .sort({ requested_at: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
     // get my donation request
     app.get("/donation-request", verifyFireBaseToken, async (req, res) => {
       const { email } = req.query;

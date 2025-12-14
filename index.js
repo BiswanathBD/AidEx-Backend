@@ -420,7 +420,7 @@ async function run() {
 
         const fundDocs = await fundsCollection.find().toArray();
         const totalFunds = fundDocs.reduce(
-          (sum, item) => sum + (item.fundAmount || 0),
+          (sum, item) => sum + (item.amount || 0),
           0
         );
 

@@ -3,6 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -127,6 +128,83 @@ async function run() {
       };
 
       const result = await usersCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // stripe payment system integrate
+    app.post(
+      "/payment-checkout-session",
+      verifyFireBaseToken,
+      async (req, res) => {
+        const { amount, email, name, avatar } = req.body;
+
+        if (!amount || amount <= 0 || !email) {
+          return res.status(400).send({ message: "Invalid payment info" });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: "Give fund to AidEx",
+                },
+                unit_amount: amount * 100,
+              },
+              quantity: 1,
+            },
+          ],
+          mode: "payment",
+          customer_email: email,
+          metadata: { donorName: name, avatar },
+          success_url: `${process.env.DOMAIN}/paymentSuccess?session_id={CHECKOUT_SESSION_ID}`,
+          cancel_url: `${process.env.DOMAIN}/paymentError`,
+        });
+
+        res.send({ url: session.url });
+      }
+    );
+
+    // get payment result
+    app.get("/checkout-session", async (req, res) => {
+      const { sessionId } = req.query;
+
+      if (!sessionId) {
+        return res.status(400).send({ message: "Session ID missing" });
+      }
+
+      const session = await stripe.checkout.sessions.retrieve(sessionId);
+
+      if (session.payment_status !== "paid") {
+        return res.status(400).send({ message: "Payment not completed" });
+      }
+
+      res.send({
+        transactionId: session.payment_intent,
+        amount: session.amount_total / 100,
+        email: session.customer_email,
+        donorName: session.metadata?.donorName,
+        avatar: session.metadata?.avatar,
+      });
+    });
+
+    // create funding data
+    app.post("/funds", verifyFireBaseToken, async (req, res) => {
+      const data = req.body;
+      const { transactionId } = data;
+
+      if (!transactionId) {
+        return res.status(400).send({ message: "Transaction ID required" });
+      }
+
+      const isExist = await fundsCollection.findOne({ transactionId });
+
+      if (isExist) {
+        return res.status(409).send({ message: "Donation already saved" });
+      }
+
+      const result = await fundsCollection.insertOne(data);
       res.send(result);
     });
 

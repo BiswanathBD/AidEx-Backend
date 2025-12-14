@@ -130,6 +130,16 @@ async function run() {
       res.send(result);
     });
 
+    // get all funding data
+    app.get("/funds", verifyFireBaseToken, async (req, res) => {
+      const result = await fundsCollection
+        .find()
+        .sort({ fundingDate: -1 })
+        .toArray();
+
+      res.send(result);
+    });
+
     // get my donation request
     app.get("/donation-request", verifyFireBaseToken, async (req, res) => {
       const { email } = req.query;

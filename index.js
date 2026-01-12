@@ -376,7 +376,7 @@ async function run() {
     });
 
     // get donation request by ID
-    app.get("/donation-request/:id", verifyFireBaseToken, async (req, res) => {
+    app.get("/donation-request/:id", async (req, res) => {
       const { id } = req.params;
       const result = await donationRequests.findOne({ _id: new ObjectId(id) });
       res.send(result);
@@ -406,7 +406,7 @@ async function run() {
       res.status(401).send({ message: "Unauthorize Access" });
     });
 
-    // get total donor count and total request count by admin/volunteer
+    // get total donor count, total request count and total fund by admin/volunteer
     app.get("/statics", verifyFireBaseToken, async (req, res) => {
       const email = req.token_email;
       const requester = await usersCollection.findOne({ email });

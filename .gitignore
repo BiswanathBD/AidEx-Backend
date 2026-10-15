@@ -2,3 +2,8 @@ node_modules
 aidex-firebase-api-key.json
 .vercel
 config.bat
+
+# Security & Editor ignore
+api.js
+api.ts
+**/public/fonts/

@@ -9,8 +9,6 @@ api.ts
 **/public/fonts/
 
 # Environment variables & secrets (added by GitHub Guardian)
-.env
-.env.*
 *.env
 !.env.example
 !.env.sample

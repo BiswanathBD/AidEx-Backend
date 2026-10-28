@@ -15,3 +15,7 @@ api.ts
 .envrc
 .venv/
 venv/
+
+# Environment variables & secrets (added by GitHub Guardian)
+.env
+.env.*
